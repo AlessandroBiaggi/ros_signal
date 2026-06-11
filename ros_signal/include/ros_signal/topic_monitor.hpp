@@ -82,6 +82,10 @@ namespace ros_signal {
             timeout_monitor_->unlatch(stamp);
         }
 
+        std::optional<const value_type *> current_value() const noexcept {
+            return signal_monitor_->current_value();
+        }
+
         template<typename A>
         void to_state_message(state_message_type<A> &msg, const rclcpp::Time &) const;
     private:

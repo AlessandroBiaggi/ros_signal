@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <optional>
 #include <type_traits>
 #include <vector>
 
@@ -78,6 +79,10 @@ namespace ros_signal {
         template<typename A>
         void to_state_message(state_message_type<A> &msg) const noexcept;
 
+        std::optional<const value_type *> current_value() const noexcept {
+            return current_value_;
+        }
+
         allocator_type get_allocator() {
             return alloc_;
         }
@@ -91,6 +96,8 @@ namespace ros_signal {
         allocator_type alloc_;
 
     private:
+        std::optional<const value_type *> current_value_;
+
         using errors_it = typename decltype(errors_)::iterator;
         std::unique_ptr<ros_signal::detail::CheckImplBase<value_type, errors_it>> checks_;
 
@@ -111,6 +118,7 @@ namespace ros_signal {
         error_(false),
         errors_(sizeof...(CheckTs), false, alloc),
         alloc_(alloc),
+        current_value_(std::nullopt),
         checks_(std::make_unique<ros_signal::detail::CheckImpl<value_type, errors_it, CheckTs...>>(
             std::move(checks)...)) {
     }
@@ -119,7 +127,9 @@ namespace ros_signal {
 	bool SignalMonitorBase<MsgT, AllocT>::signal(const rclcpp::Time &stamp, const value_type &msg) {
         const auto ok = (*checks_)(msg, errors_.begin());
         if (!ok) {
+            current_value_.emplace(&msg);
             latch(stamp);
+            current_value_.reset();
         }
         return ok;
     }
